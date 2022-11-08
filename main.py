@@ -7,19 +7,20 @@ import time
 
 from stupidArtnet import StupidArtnetServer
 
+
 def init_channel_data():
     channel_data = {}
-    channel_data[1] = lambda X: f'LW-SET=1:{0 if X == 0 else 1}!'  # Motorscreen
+    channel_data[1] = lambda X,Y: f'LW-SET=1:{0 if X == 0 else 1}!'  # Motorscreen
 
-    channel_data[2] = lambda X: f'KNX-SET=1:{0 if X == 0 else 1}!'  # Ceiling light Back
-    channel_data[3] = lambda X: f'KNX-SET=3:{0 if X == 0 else 1}!'  # Ceiling light front
-    channel_data[4] = lambda X: f'KNX-SET=18:{0 if X == 0 else 1}!'  # Light Front Right
-    channel_data[5] = lambda X: f'KNX-SET=20:{0 if X == 0 else 1}!'  # Light Front Left
-    channel_data[6] = lambda X: f'KNX-SET=24:{0 if X == 0 else 1}!'  # Light Back Right
-    channel_data[7] = lambda X: f'KNX-SET=22:{0 if X == 0 else 1}!'  # Light Back left
+    channel_data[2] = lambda X,Y: f'KNX-SET=1:{0 if X == 0 else 1}!'  # Ceiling light Back
+    channel_data[3] = lambda X,Y: f'KNX-SET=3:{0 if X == 0 else 1}!'  # Ceiling light front
+    channel_data[4] = lambda X,Y: f'KNX-SET=18:{0 if X == 0 else 1}!'  # Light Front Right
+    channel_data[5] = lambda X,Y: f'KNX-SET=20:{0 if X == 0 else 1}!'  # Light Front Left
+    channel_data[6] = lambda X,Y: f'KNX-SET=24:{0 if X == 0 else 1}!'  # Light Back Right
+    channel_data[7] = lambda X,Y: f'KNX-SET=22:{0 if X == 0 else 1}!'  # Light Back left
 
-    channel_data[8] = lambda X: f'KNX-SET=26:{0 if X == 0 else 1}!'  # Motorscreen
-    channel_data[9] = lambda X: f'KNX-SET=9:{0 if X == 0 else 1}!'  # Window Blinds
+    channel_data[8] = lambda X,Y: f'KNX-SET=26:{0 if X == 0 else 1}!'  # Motorscreen
+    channel_data[9] = lambda X,Y: f'KNX-SET=9:{0 if X == 0 else 1}!'  # Window Blinds
 
     # spots 01 to 18
     spot_data = {10: 14, 11: 1, 12: 18,
@@ -31,11 +32,15 @@ def init_channel_data():
 
     for channel in spot_data:
         def closure(channel_num):
-            def f(X):
-                return f'DALI-SET={channel_num}:{X}:2!'
+            def f(X, Y):
+                return f'DALI-SET={channel_num}:{X}:{Y}!'
             return f
+
         channel_data[channel] = closure(spot_data[channel])
     return channel_data
+
+
+channel_data = init_channel_data()
 
 
 def start_simulator():
@@ -72,40 +77,51 @@ def start_min_server():
     x = threading.Thread(target=thread_function, args=(1,))
     x.start()
 
-def send_to_controller(sock, channel, arg):
-    data_to_controller: str = channel_data[channel](arg) + '\r'
-    str1 = f'Sending to controller:{data_to_controller}'
-    back = "\b" * len(str1)
-    erase = " " * len(str1)
-    print(str1, end="")
+
+def prod_output(string):
+    back = "\b" * len(string)
+    erase = " " * len(string)
+    print(string, end="")
     print(back, end="")
     print(erase, end="")
     print(back, end="")
-    #print(str1)
+
+
+def send_to_controller(sock, channel, arg, arg2):
+    data_to_controller: str = channel_data[channel](arg, arg2) + '\r'
+    str1 = f'To controller:{data_to_controller}'
+    # prod_output(str1)
+    print(str1)
     sock.sendto(bytes(data_to_controller, 'ascii'), ('localhost', 5000))
 
 
-if __name__ == '__main__':
-
-    #start_simulator()
-    #start_min_server()
-
+def main():
     a = StupidArtnetServer()
-    channel_data = init_channel_data()
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    #print(channel_data[1](1))
+    # print(channel_data[1](1))
+
+    last_data = [-10] * len(channel_data)
 
     def test_callback(input_from_artnet):
-        #print('Received new data from Artnet: ', len(input_from_artnet), " ", input_from_artnet )
         for channel_number in range(1, len(channel_data)):
-            send_to_controller(sock, channel_number, input_from_artnet[channel_number])
+            nonlocal last_data
+            if last_data[channel_number] != input_from_artnet[channel_number]:
+                send_to_controller(sock, channel_number, input_from_artnet[channel_number], 2)
+                time.sleep(0.1)
+            last_data[channel_number] = input_from_artnet[channel_number]
     a.register_listener(universe=2, is_simplified=False, callback_function=test_callback)
 
     while True:
         channel, arg = map(int, input(">").split())
-        send_to_controller(sock, channel, arg)
+        send_to_controller(sock, channel, arg, 2)
 
+
+if __name__ == '__main__':
+    # start_simulator()
+    # start_min_server()
+
+    main()
 
 """
 Device	Value	Artnet Channel	UDP String	Comment
