@@ -74,8 +74,15 @@ def start_min_server():
 
 def send_to_controller(sock, channel, arg):
     data_to_controller: str = channel_data[channel](arg) + '\r'
-    print('Sending to controller: ', data_to_controller)
-    sock.sendto(bytes(data_to_controller, 'utf-8'), ('localhost', 5000))
+    str1 = f'Sending to controller:{data_to_controller}'
+    back = "\b" * len(str1)
+    erase = " " * len(str1)
+    print(str1, end="")
+    print(back, end="")
+    print(erase, end="")
+    print(back, end="")
+    #print(str1)
+    sock.sendto(bytes(data_to_controller, 'ascii'), ('localhost', 5000))
 
 
 if __name__ == '__main__':
@@ -87,16 +94,16 @@ if __name__ == '__main__':
     channel_data = init_channel_data()
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    print(channel_data[1](1))
+    #print(channel_data[1](1))
 
     def test_callback(input_from_artnet):
         #print('Received new data from Artnet: ', len(input_from_artnet), " ", input_from_artnet )
-        for channel_number in range(1, 27):
+        for channel_number in range(1, len(channel_data)):
             send_to_controller(sock, channel_number, input_from_artnet[channel_number])
     a.register_listener(universe=2, is_simplified=False, callback_function=test_callback)
 
     while True:
-        channel, arg = map(int, input("channel argument>").split())
+        channel, arg = map(int, input(">").split())
         send_to_controller(sock, channel, arg)
 
 
