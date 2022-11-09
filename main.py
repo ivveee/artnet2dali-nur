@@ -9,17 +9,17 @@ from stupidArtnet import StupidArtnetServer
 
 def init_channel_data():
     channel_data = {}
-    channel_data[1] = lambda X,Y: f'LW-SET=1:{0 if X == 0 else 1}!'  # Motorscreen
+    channel_data[1] = lambda X, Y: f'LW-SET={0 if X == 0 else 1}!'  # Motorscreen
 
-    channel_data[2] = lambda X,Y: f'KNX-SET=1:{0 if X == 0 else 1}!'  # Ceiling light Back
-    channel_data[3] = lambda X,Y: f'KNX-SET=3:{0 if X == 0 else 1}!'  # Ceiling light front
-    channel_data[4] = lambda X,Y: f'KNX-SET=18:{0 if X == 0 else 1}!'  # Light Front Right
-    channel_data[5] = lambda X,Y: f'KNX-SET=20:{0 if X == 0 else 1}!'  # Light Front Left
-    channel_data[6] = lambda X,Y: f'KNX-SET=24:{0 if X == 0 else 1}!'  # Light Back Right
-    channel_data[7] = lambda X,Y: f'KNX-SET=22:{0 if X == 0 else 1}!'  # Light Back left
+    channel_data[2] = lambda X, Y: f'KNX-SET=1:{0 if X == 0 else 1}!'  # Ceiling light Back
+    channel_data[3] = lambda X, Y: f'KNX-SET=3:{0 if X == 0 else 1}!'  # Ceiling light front
+    channel_data[4] = lambda X, Y: f'KNX-SET=18:{0 if X == 0 else 1}!'  # Light Front Right
+    channel_data[5] = lambda X, Y: f'KNX-SET=20:{0 if X == 0 else 1}!'  # Light Front Left
+    channel_data[6] = lambda X, Y: f'KNX-SET=24:{0 if X == 0 else 1}!'  # Light Back Right
+    channel_data[7] = lambda X, Y: f'KNX-SET=22:{0 if X == 0 else 1}!'  # Light Back left
 
-    channel_data[8] = lambda X,Y: f'KNX-SET=26:{0 if X == 0 else 1}!'  # Motorscreen
-    channel_data[9] = lambda X,Y: f'KNX-SET=9:{0 if X == 0 else 1}!'  # Window Blinds
+    channel_data[8] = lambda X, Y: f'KNX-SET=26:{0 if X == 0 else 1}!'  # Motorscreen
+    channel_data[9] = lambda X, Y: f'KNX-SET=9:{0 if X == 0 else 1}!'  # Window Blinds
 
     # spots 01 to 18
     spot_data = {10: 14, 11: 1, 12: 18,
@@ -29,10 +29,16 @@ def init_channel_data():
                  22: 6, 23: 3, 24: 4,
                  25: 12, 26: 16, 27: 5}
 
+    channel_data[11] = lambda X, Y: 'SHOW-ENDE!' if X == 254 else '0'  # Window Blinds
+
     for channel in spot_data:
         def closure(channel_num):
             def f(X, Y):
-                return f'DALI-SET={channel_num}:{X}:{Y}!'
+                second_arg = 0
+                if Y != 0:
+                    second_arg = round(254 / Y * 16)
+                return f'DALI-SET={channel_num}:{X}:{second_arg}!'
+
             return f
 
         channel_data[channel] = closure(spot_data[channel])
@@ -91,7 +97,7 @@ def send_to_controller(sock, channel, arg, arg2):
     str1 = f'To controller:{data_to_controller}'
     # prod_output(str1)
     print(str1)
-    sock.sendto(bytes(data_to_controller, 'ascii'), ('localhost', 5000))
+    sock.sendto(bytes(data_to_controller, 'ascii'), ('192.168.1.200', 5000))
 
 
 def main():
@@ -106,13 +112,12 @@ def main():
         for channel_number in range(1, len(channel_data)):
             nonlocal last_data
             if last_data[channel_number] != input_from_artnet[channel_number]:
-                second_arg = 0
-                if input_from_artnet[channel_number+18] != 0:
-                    second_arg = round(254/input_from_artnet[channel_number+18]*16)
+                second_arg_channel_number = channel_number + 18
                 send_to_controller(sock, channel_number, input_from_artnet[channel_number],
-                                   second_arg)
+                                   input_from_artnet[second_arg_channel_number])
                 time.sleep(0.1)
             last_data[channel_number] = input_from_artnet[channel_number]
+
     a.register_listener(universe=2, is_simplified=False, callback_function=test_callback)
 
     while True:
