@@ -106,7 +106,11 @@ def main():
         for channel_number in range(1, len(channel_data)):
             nonlocal last_data
             if last_data[channel_number] != input_from_artnet[channel_number]:
-                send_to_controller(sock, channel_number, input_from_artnet[channel_number], 2)
+                second_arg = 0
+                if input_from_artnet[channel_number+18] != 0:
+                    second_arg = round(254/input_from_artnet[channel_number+18]*16)
+                send_to_controller(sock, channel_number, input_from_artnet[channel_number],
+                                   second_arg)
                 time.sleep(0.1)
             last_data[channel_number] = input_from_artnet[channel_number]
     a.register_listener(universe=2, is_simplified=False, callback_function=test_callback)
