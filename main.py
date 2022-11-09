@@ -1,6 +1,5 @@
 import logging
 
-import asyncio
 import socket
 import threading
 import time
